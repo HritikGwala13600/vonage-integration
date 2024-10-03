@@ -1,0 +1,10 @@
+Client Side
+
+ - The OT.initPublisher() method initializes and returns a Publisher object. The Publisher object represents the view of a video you publish:
+    - The OT.initPublisher() method takes three parameters:
+      - targetElement— (Optional) Defines the DOM element that the Publisher video replaces.
+      - 
+
+WebRTC (Web Real-Time Communication)
+  - Vonage Video API uses WebRTC for audio-video communications.
+  - WebRTC (Web Real-Time Communication) is an open-source technology that allows users to communicate in real-time over the internet without the need for third-party software or plugin
