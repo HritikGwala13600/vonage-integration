@@ -1,114 +1,5 @@
 $(document).ready(function () {
-    // Toggling classes for audio (Mute/Unmute) with jQuery
-    $(".audio-toggle").on("click", function () {
-        const icon = $(this).find("i");
-        if (icon.hasClass("fa-microphone-slash")) {
-            icon.removeClass("fa-microphone-slash inactive").addClass(
-                "fa-microphone active"
-            );
-            icon.css("color", "white");
-            $(this).html('<i class="fas fa-microphone active"></i> Mute');
-        } else {
-            icon.removeClass("fa-microphone active").addClass(
-                "fa-microphone-slash inactive"
-            );
-            icon.css("color", "red");
-            $(this).html(
-                '<i class="fas fa-microphone-slash inactive"></i> Unmute'
-            );
-        }
-    });
-
-    // Toggling classes for video (On/Off) with jQuery
-    $(".video-toggle").on("click", function () {
-        const icon = $(this).find("i");
-        if (icon.hasClass("fa-video")) {
-            icon.removeClass("fa-video active").addClass(
-                "fa-video-slash inactive"
-            );
-            icon.css("color", "white");
-            $(this).html('<i class="fas fa-video-slash inactive"></i> Video');
-        } else {
-            icon.removeClass("fa-video-slash inactive").addClass(
-                "fa-video active"
-            );
-            icon.css("color", "red");
-            $(this).html('<i class="fas fa-video active"></i> Video');
-        }
-    });
-
-    // Toggling classes for screen sharing (Share/Stop Share) with jQuery
-    $(".share-screen-toggle").on("click", function () {
-        const icon = $(this).find("i");
-        if (icon.hasClass("fa-share-square")) {
-            icon.removeClass("fa-share-square active").addClass(
-                "fa-stop-circle inactive"
-            );
-            icon.css("color", "white");
-            $(this).html(
-                '<i class="fas fa-stop-circle inactive"></i> Stop Sharing'
-            );
-        } else {
-            icon.removeClass("fa-stop-circle inactive").addClass(
-                "fa-share-square active"
-            );
-            icon.css("color", "red");
-            $(this).html(
-                '<i class="fas fa-share-square active"></i> Share Screen'
-            );
-        }
-    });
-
-    // Toggling classes for recording (Start/Stop) with jQuery
-    $(".record-toggle").on("click", function () {
-        const icon = $(this).find("i");
-        if (icon.hasClass("fa-record-vinyl")) {
-            icon.removeClass("fa-record-vinyl active").addClass(
-                "fa-stop-circle inactive"
-            );
-            icon.css("color", "white");
-            $(this).html(
-                '<i class="fas fa-stop-circle inactive"></i> Stop Recording'
-            );
-        } else {
-            icon.removeClass("fa-stop-circle inactive").addClass(
-                "fa-record-vinyl active"
-            );
-            icon.css("color", "red");
-            $(this).html(
-                '<i class="fas fa-record-vinyl active"></i> Start Recording'
-            );
-        }
-    });
-
-    // Toggling between End Meeting and Leave Meeting with jQuery
-    $(".meeting-toggle").on("click", function () {
-        $(".host-view").toggle();
-        $(".participant-view").toggle();
-    });
-
-    // Toggling chat panel
-    $(".chat-toggle").on("click", function () {
-        $("#chat-section").toggleClass("chat-open");
-    });
-
-    // Close chat panel
-    $(".close-chat").on("click", function () {
-        $("#chat-section").removeClass("chat-open");
-    });
-
-    // Sending a chat message (Demo)
-    $("#send-message").on("click", function () {
-        const message = $("#chat-input").val();
-        if (message.trim() !== "") {
-            $(".chat-messages").append("<p>" + message + "</p>");
-            $("#chat-input").val("");
-        }
-    });
-
-    // Vonage Video Login Start Here....
-
-    let archiveId = null; // Store the archive ID
+    let archiveId = null;
     let publisher;
     let cameraOn = true;
     let audioOn = true;
@@ -116,11 +7,19 @@ $(document).ready(function () {
     let screenSharingOn = false;
     let subscriber;
     const session = OT.initSession(apiKey, sessionId);
-    let participantCount = 0;
+    let participantCount = 1;
     let meetingStartTime = null;
     let meetingDurationInterval;
     let audioInputDevices;
     let videoInputDevices;
+    let participantName =
+        prompt("Enter your name to join the meeting:") || "Anonymous";
+
+    // In-memory chat history (temporary storage)
+    let chatHistory = [];
+
+    // Flag to track if the message is sent by the local user
+    let isLocalMessage = false;
 
     // AJAX Setup for CSRF
     $.ajaxSetup({
@@ -129,57 +28,85 @@ $(document).ready(function () {
         },
     });
 
-    // Setting the camera and microphone used by the publisher
-    OT.getDevices((error, devices) => {
-        console.log("getDevices Called");
-
-        audioInputDevices = devices.filter(
-            (device) => device.kind === "audioInput"
+    // Toggle Audio (Mute/Unmute)
+    $(".audio-toggle").on("click", function () {
+        if (!publisher) return;
+        const icon = $(this).find("i");
+        audioOn = !audioOn;
+        publisher.publishAudio(audioOn);
+        icon.toggleClass("fa-microphone-slash fa-microphone");
+        $(this).html(
+            audioOn
+                ? '<i class="fas fa-microphone active"></i> Mute'
+                : '<i class="fas fa-microphone-slash inactive"></i> Unmute'
         );
-        videoInputDevices = devices.filter(
-            (device) => device.kind === "videoInput"
-        );
-
-        audioInputDevices.forEach((device) => {
-            console.log("audio input device: ", device.deviceId);
-        });
-        videoInputDevices.forEach((device) => {
-            console.log("video input device: ", device.deviceId);
-        });
     });
 
-    // Connect to session
+    // Toggle Video (On/Off)
+    $(".video-toggle").on("click", function () {
+        if (!publisher) return;
+        const icon = $(this).find("i");
+        cameraOn = !cameraOn;
+        publisher.publishVideo(cameraOn);
+        icon.toggleClass("fa-video-slash fa-video");
+        $(this).html(
+            cameraOn
+                ? '<i class="fas fa-video active"></i> Video'
+                : '<i class="fas fa-video-slash inactive"></i> Video'
+        );
+    });
+
+    // Screen Sharing Toggle
+    $(".share-screen-toggle").on("click", function () {
+        const icon = $(this).find("i");
+        if (!screenSharingOn) {
+            startScreenSharing();
+        } else {
+            stopScreenSharing();
+        }
+        icon.toggleClass("fa-stop-circle fa-share-square");
+        $(this).html(
+            screenSharingOn
+                ? '<i class="fas fa-stop-circle"></i> Stop Sharing'
+                : '<i class="fas fa-share-square"></i> Share Screen'
+        );
+    });
+
+    // Connect to the session
     session.connect(token, (error) => {
         if (error) {
             console.log("Error connecting:", error.message);
             return;
         }
 
-        const pubOptions = {
-            audioSource: audioInputDevices[0].deviceId,
-            videoSource: videoInputDevices[0].deviceId,
-        };
-        // Initialize publisher (camera)
-        publisher = OT.initPublisher("publisher", pubOptions, {
-            name: "Publisher Name",
-            insertMode: "append",
-            resolution: "1280x720",
-            style: { buttonDisplayMode: "off" },
-        });
-
-        session.publish(publisher, (error) => {
-            if (error) {
-                console.log(error);
-            } else {
-                console.log("Publishing a stream.");
-            }
-        });
-
-        // Listen to streamCreated event
-        session.on("streamCreated", (event) => {
-            console.log(
-                `Stream resolution: ${event.stream.videoDimensions.width}x${event.stream.videoDimensions.height}`
+        OT.getDevices((error, devices) => {
+            audioInputDevices = devices.filter(
+                (device) => device.kind === "audioInput"
             );
+            videoInputDevices = devices.filter(
+                (device) => device.kind === "videoInput"
+            );
+
+            const pubOptions = {
+                audioSource: audioInputDevices[0]?.deviceId,
+                videoSource: videoInputDevices[0]?.deviceId,
+                name: participantName,
+                insertMode: "append",
+                width: "100%",
+                height: "100%",
+                style: { buttonDisplayMode: "off" },
+            };
+
+            publisher = OT.initPublisher("publisher", pubOptions);
+            session.publish(publisher, (error) => {
+                if (error) console.log(error);
+            });
+
+            // loadChatHistory(); // Load chat history for newly connected participants
+        });
+
+        // Listen to streamCreated event for participants and screen sharing
+        session.on("streamCreated", (event) => {
             subscriber = session.subscribe(event.stream, "subscriber", {
                 insertMode: "append",
                 width: "100%",
@@ -189,121 +116,139 @@ $(document).ready(function () {
         });
 
         // Detecting when a published stream leaves a session
-        publisher.on("streamDestroyed", (event) => {
+        publisher?.on("streamDestroyed", (event) => {
             console.log(
                 "The publisher stopped streaming. Reason: " + event.reason
             );
         });
 
-        // Toggle camera
-        $("#toggleCamera").on("click", function () {
-            cameraOn = !cameraOn;
-            publisher.publishVideo(cameraOn);
-            // this.textContent = cameraOn ? "Turn Off Camera" : "Turn On Camera";
-        });
+        // Chat message handling
+        $("#send-message")
+            .off("click")
+            .on("click", function () {
+                const message = $("#chat-input").val();
 
-        // Toggle audio
-        $("#toggleAudio").on("click", function () {
-            audioOn = !audioOn;
-            publisher.publishAudio(audioOn);
-            // this.textContent = audioOn ? "Mute" : "Unmute";
-        });
+                if (message.trim() !== "") {
+                    const chatData = {
+                        name: participantName,
+                        message: message,
+                        profilePic: participantProfilePic,
+                        timestamp: new Date().toLocaleTimeString(),
+                    };
 
-        // Screen sharing
-        $("#toggleScreenShare").on("click", function () {
-            if (!screenSharingOn) {
-                startScreenSharing();
-                // this.textContent = "Stop Sharing";
-            } else {
-                stopScreenSharing();
-                // this.textContent = "Share Screen";
-            }
-        });
+                    // Mark as local message
+                    isLocalMessage = true;
 
-        // Start recording
-        $("#startRecording").on("click", function () {
-            $.ajax({
-                url: startRecordingUrl,
-                method: "POST",
-                data: { sessionId },
-                success: (response) => {
-                    archiveId = response.archiveId;
-                    console.log("Recording started, Archive ID:", archiveId);
-                    $(this).hide();
-                    // $("#stopRecording").show().prop("disabled", false);
-                },
-                error: (xhr) => {
-                    console.log("Error starting archive:", xhr.responseText);
-                },
+                    // Send chat message via Vonage signal
+                    session.signal(
+                        {
+                            type: "chat",
+                            data: JSON.stringify(chatData),
+                        },
+                        function (error) {
+                            if (error) {
+                                console.log(
+                                    "Error sending signal:",
+                                    error.message
+                                );
+                            }
+                        }
+                    );
+
+                    // Append the message locally immediately
+                    appendChatMessage(chatData);
+
+                    // Clear the input after sending
+                    $("#chat-input").val("");
+                }
             });
-        });
 
-        // Stop recording
-        $("#stopRecording").on("click", function () {
-            if (archiveId) {
-                $.ajax({
-                    url: stopRecordingUrl,
-                    method: "POST",
-                    data: { archiveId },
-                    success: (response) => {
-                        console.log("Recording stopped.");
-                        $(this).hide();
-                        $("#startRecording").show();
-                        $(this).prop("disabled", true);
-                    },
-                    error: (xhr) => {
-                        console.log(
-                            "Error stopping archive:",
-                            xhr.responseText
-                        );
-                    },
-                });
+        // Receiving chat messages
+        session.on("signal:chat", function (event) {
+            try {
+                const chatData = JSON.parse(event.data);
+
+                // Only append if the message was not sent by the local user
+                if (!isLocalMessage) {
+                    appendChatMessage(chatData);
+                }
+
+                // Reset local message flag
+                isLocalMessage = false;
+
+                chatHistory.push(chatData);
+            } catch (error) {
+                console.error("Error parsing chat data:", error);
             }
         });
 
-        // Leave meeting
-        $("#leaveCall").on("click", function () {
-            // session.disconnect();
-            // clearInterval(meetingDurationInterval);
-            // alert("You have left the meeting.");
-            // location.reload(); // Reload to reset UI after leaving
-            // window.location.href = homePageUrl;
-        });
+        // Host-only functionality: End meeting
+        if (isHost) {
+            $("#leaveCall").on("click", function () {
+                session.disconnect();
+                alert("Meeting ended by the host.");
+                window.location.href = homePageUrl;
+            });
+        }
 
         // Start meeting duration timer
         meetingStartTime = new Date();
         meetingDurationInterval = setInterval(updateMeetingDuration, 1000);
     });
 
-    // Screen sharing functions
+    // Start screen sharing
     const startScreenSharing = () => {
-        screenSharingPublisher = OT.initPublisher("publisher", {
+        if (screenSharingPublisher) return;
+
+        screenSharingPublisher = OT.initPublisher("screenPublisher", {
             videoSource: "screen",
         });
-        session.publish(screenSharingPublisher);
+
+        session.publish(screenSharingPublisher, (error) => {
+            if (error) {
+                console.log("Error starting screen sharing:", error.message);
+                stopScreenSharing(); // Ensure cleanup on error
+            }
+        });
+
         screenSharingOn = true;
     };
 
+    // Stop screen sharing
     const stopScreenSharing = () => {
         if (screenSharingPublisher) {
             session.unpublish(screenSharingPublisher);
             screenSharingPublisher.destroy();
+            screenSharingPublisher = null;
             screenSharingOn = false;
         }
     };
 
-    // Update UI for participants
+    // Append chat message to UI
+    const appendChatMessage = (chatData) => {
+        const senderName = chatData.name || "Anonymous";
+        const senderMessage = chatData.message || "";
+        const senderProfilePic =
+            chatData.profilePic || "https://example.com/default-avatar.png";
+
+        $(".chat-messages").append(`
+            <div class="chat-message">
+                <img src="${senderProfilePic}" alt="Profile Picture" class="chat-profile-pic">
+                <div class="chat-message-content">
+                    <strong>${senderName}:</strong> ${senderMessage} <span class="timestamp">(${chatData.timestamp})</span>
+                </div>
+            </div>
+        `);
+    };
+
+    // Update participant UI
     const updateParticipantUI = () => {
         participantCount += 1;
         const videoContainer = $("#videos");
-        if (participantCount > 1) {
-            videoContainer.css(
-                "grid-template-columns",
-                `repeat(${participantCount}, 1fr)`
-            );
-        } else {
-            videoContainer.css("grid-template-columns", "1fr");
-        }
+        videoContainer.css(
+            "grid-template-columns",
+            `repeat(${participantCount}, 1fr)`
+        );
     };
 
     // Update meeting duration
@@ -315,5 +260,47 @@ $(document).ready(function () {
         const minutes = Math.floor(durationInSeconds / 60);
         const seconds = durationInSeconds % 60;
         $("#meetingDuration").text(`${minutes}m ${seconds}s`);
+    };
+
+    // Toggling chat panel
+    $(".chat-toggle").on("click", function () {
+        $("#chat-section").toggleClass("chat-open");
+    });
+
+    // Close chat panel
+    $(".close-chat").on("click", function () {
+        $("#chat-section").removeClass("chat-open");
+    });
+
+    // --- Speaker View Handling ---
+    let inSpeakerView = false;
+
+    $("#speaker-view").on("click", function () {
+        if (!inSpeakerView) {
+            switchToSpeakerView();
+        } else {
+            switchToGridView();
+        }
+        inSpeakerView = !inSpeakerView;
+    });
+
+    const switchToSpeakerView = () => {
+        $("#publisher").css({
+            width: "100%",
+            height: "100%",
+            gridColumn: "span 3",
+        });
+        $("#subscriber").hide(); // Hide other participants
+        $("#speaker-view").html('<i class="fas fa-th"></i> Grid View');
+    };
+
+    const switchToGridView = () => {
+        $("#publisher").css({
+            width: "100%",
+            height: "100%",
+            gridColumn: "span 1",
+        });
+        $("#subscriber").show(); // Show other participants
+        $("#speaker-view").html('<i class="fas fa-th"></i> Speaker View');
     };
 });

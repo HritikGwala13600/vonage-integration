@@ -115,18 +115,6 @@ footer > * {
     justify-content: center;
 }
 
-.inactive {
-    color: red;
-}
-
-a.end-meeting {
-    align-items: stretch;
-    color: red;
-    background-color: #4a4a4a;
-    padding: 10px 20px;
-    border-radius: 5px;
-    margin: 5px;
-}
 /* Chat section styling */
 .chat-section {
     position: fixed;
@@ -192,8 +180,34 @@ a.end-meeting {
     font-size: 16px;
 }
 
+/* Chat message layout */
+.chat-message {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.chat-profile-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.chat-message-content {
+    display: flex;
+    flex-direction: column;
+    background-color: #333;
+    padding: 10px;
+    border-radius: 10px;
+}
+
+.timestamp {
+    font-size: 0.8rem;
+    color: #bbb;
+}
+
 /* Open chat panel */
 .chat-open {
     right: 0;
 }
-
