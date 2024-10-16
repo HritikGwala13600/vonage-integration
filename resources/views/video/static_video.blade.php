@@ -30,7 +30,7 @@
                 <div class="webcam-grid" id="videos">
                     <div id="subscriber"></div>
                     <div id="publisher"></div>
-                    <div id="screenPublisher"></div>
+                    {{-- <div id="screenPublisher"></div> --}}
                 </div>
             </div>
         </main>
@@ -56,18 +56,27 @@
                     <li id="toggleCamera"><a href="javascript:void(0)" class="video-toggle"><i class="fas fa-video active"></i>Video</a></li>
                 </ul>
                 <ul>
-                    <li id="toggleScreenShare"><a href="javascript:void(0)" class="share-screen-toggle"><i class="fas fa-share-square active"></i>Share Screen</a></li>
-                    <li id="startRecording"><a href="javascript:void(0)" class="record-toggle"><i class="fas fa-record-vinyl active"></i>Start Recording</a></li>
+                    {{-- <li id="toggleScreenShare"><a href="javascript:void(0)" class="share-screen-toggle"><i class="fas fa-share-square active"></i>Share Screen</a></li> --}}
+                    {{-- <li id="startRecording"><a href="javascript:void(0)" class="record-toggle"><i class="fas fa-record-vinyl active"></i>Start Recording</a></li> --}}
                     <li><a href="javascript:void(0)" class="chat-toggle"><i class="fas fa-comment"></i>Chat</a></li>
                 </ul>
                 <ul class="exit-meeting">
-                    <li id="leaveCall"><a href="#" class="meeting-toggle">
-                            <span class="host-view end-meeting"><i class="fas fa-times-circle"></i> End Meeting</span>
-                            <span class="participant-view leave-meeting" style="display:none;"><i class="fas fa-sign-out-alt"></i> Leave Meeting</span>
-                        </a></li>
+                    <li id="leaveCall">
+                        <a href="javascript:void(0)" class="meeting-toggle">
+                            <span class="host-view end-meeting" style="display: {{ (auth()->user()->role == 1) ? 'block' : 'none' }};">
+                            {{-- <span class="host-view end-meeting" style="display: 'block' }};"> --}}
+                                <i class="fas fa-times-circle"></i> End Meeting
+                            </span>
+                            <span class="participant-view leave-meeting" style="display: {{ (auth()->user()->role == 0) ? 'block' : 'none' }};">
+                            {{-- <span class="participant-view leave-meeting" style="display:block;}};"> --}}
+                                <i class="fas fa-sign-out-alt"></i> Leave Meeting
+                            </span>
+                        </a>
+                    </li>
                 </ul>
             </nav>
         </footer>
+
     </div>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
@@ -79,8 +88,9 @@
         var stopRecordingUrl = "{{route('stop-archive')}}";
         var startRecordingUrl = "{{route('start-archive')}}";
         var homePageUrl = "{{route('dashboard')}}";
-        let isHost = "{{ $isHost }}";
+        let isHost = "{{ (auth()->user()->role == 1) ? true : false  }}"
         let participantProfilePic = "{{ asset('images/cat.jpeg') }}";
+        let participantName = "{{auth()->user()->name ?? ''}}"
     </script>
 
     <script src="{{asset('js/video_static.js')}}"></script>

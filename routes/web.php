@@ -16,10 +16,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::get('/video-static', [VideoController::class, 'videoCallStatic'])->name('video-static');
 });
 
 Route::get('/video', [VideoController::class, 'videoCall'])->name('video');
-Route::get('/video-static', [VideoController::class, 'videoCallStatic'])->name('video-static'); 
 Route::post('/start-archive', [VideoController::class, 'startArchive'])->name('start-archive');
 Route::post('/stop-archive', [VideoController::class, 'stopArchive'])->name('stop-archive');
 Route::get('/all-recordings', [VideoController::class, 'listArchives'])->name('all-recordings');

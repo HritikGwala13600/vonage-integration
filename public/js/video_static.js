@@ -12,8 +12,10 @@ $(document).ready(function () {
     let meetingDurationInterval;
     let audioInputDevices;
     let videoInputDevices;
-    let participantName =
-        prompt("Enter your name to join the meeting:") || "Anonymous";
+
+    if (!participantName || participantName == '') {
+        participantName = prompt("Enter your name to join the meeting:") || "Anonymous";
+    }
 
     // In-memory chat history (temporary storage)
     let chatHistory = [];
@@ -72,6 +74,35 @@ $(document).ready(function () {
         );
     });
 
+    // Handle Leave Meeting (For Participants or Host Leaving)
+    $(".leave-meeting").on("click", function () {
+        if (!isHost) {
+            if (confirm("Are you sure you want to leave the meeting?")) {
+                session.disconnect(); // Disconnect only this participant
+                window.location.href = homePageUrl; // Redirect participant to home page
+            }
+        }
+    });
+    // Handle End Meeting (Only for Host)
+    $(".end-meeting").on("click", function () {
+        if (isHost) {
+            if (confirm("Are you sure you want to end the meeting for everyone?")) {
+                // Send a signal to all participants to disconnect
+                session.signal({
+                    type: "endMeeting",
+                    data: "The host has ended the meeting."
+                }, function (error) {
+                    if (error) {
+                        console.log("Error sending signal:", error.name, error.message);
+                    } else {
+                        session.disconnect(); // Disconnect host
+                        window.location.href = homePageUrl; // Redirect host to home page
+                    }
+                });
+            }
+        }
+    });
+
     // Connect to the session
     session.connect(token, (error) => {
         if (error) {
@@ -120,6 +151,13 @@ $(document).ready(function () {
             console.log(
                 "The publisher stopped streaming. Reason: " + event.reason
             );
+        });
+
+         // Listen for the 'endMeeting' signal from the host
+         session.on("signal:endMeeting", function (event) {
+            alert(event.data); // Show the message from the host
+            session.disconnect(); // Disconnect participant
+            window.location.href = homePageUrl; // Redirect to home page after disconnect
         });
 
         // Chat message handling
